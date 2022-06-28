@@ -6,6 +6,7 @@ package plugins_aladino
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -401,6 +402,45 @@ func title() *aladino.BuiltInFunction {
 
 func titleCode(e aladino.Env, args []aladino.Value) (aladino.Value, error) {
 	return aladino.BuildStringValue(e.GetPullRequest().GetTitle()), nil
+}
+
+// workflowStatus gets GitHub workflow status. Status can be "success" or "failure".
+func workflowStatus() *aladino.BuiltInFunction {
+	return &aladino.BuiltInFunction{
+		Type: aladino.BuildFunctionType([]aladino.Type{aladino.BuildStringType()}, aladino.BuildStringType()),
+		Code: workflowStatusCode,
+	}
+}
+
+func workflowStatusCode(e aladino.Env, args []aladino.Value) (aladino.Value, error) {
+	workflowName := strings.ToLower(args[0].(*aladino.StringValue).Val)
+
+	workflowPayload := e.GetEventPayload()
+	if reflect.TypeOf(workflowPayload).String() != "*github.WorkflowRunEvent" {
+		return aladino.BuildStringValue(""), nil
+	}
+
+	workflowRunPayload := workflowPayload.(*github.WorkflowRunEvent).WorkflowRun
+	if workflowRunPayload == nil {
+		return aladino.BuildStringValue(""), nil
+	}
+
+	headSHA := workflowRunPayload.GetHeadSHA()
+	owner := utils.GetPullRequestOwnerName(e.GetPullRequest())
+	repo := utils.GetPullRequestRepoName(e.GetPullRequest())
+
+	checkRuns, _, err := e.GetClient().Checks.ListCheckRunsForRef(e.GetCtx(), owner, repo, headSHA, &github.ListCheckRunsOptions{})
+	if err != nil {
+		return nil, err
+	}
+
+	for _, check := range checkRuns.CheckRuns {
+		if *check.Name == workflowName {
+			return aladino.BuildStringValue(*check.Conclusion), nil
+		}
+	}
+
+	return aladino.BuildStringValue(""), nil
 }
 
 func organization() *aladino.BuiltInFunction {

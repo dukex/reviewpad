@@ -100,6 +100,7 @@ func mockEnvWith(prOwner string, prRepoName string, prNum int, client *github.Cl
 		nil,
 		nil,
 		pr,
+		nil,
 		PluginBuiltIns(),
 	)
 
