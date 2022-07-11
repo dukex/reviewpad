@@ -45,6 +45,13 @@ workflow:
     then:
       - $addLabel("ship")
       - $merge()
+  - name: ship-to
+    description: Ship process - bypass the review and merge with rebase
+    if:
+      - rule: changesToMDFiles
+    then:
+      - $addLabel("ship")
+      - $merge(to: 'stage')
 ```
 
 Automatically adds a label `ship` and merges pull requests that only change `.md` files.
